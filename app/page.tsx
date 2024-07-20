@@ -4,14 +4,18 @@ import { type CoreMessage } from 'ai';
 import { continueConversation } from './actions';
 import { readStreamableValue } from 'ai/rsc';
 import { useState } from 'react';
-import { parseRedditUrl, scrapeRedditPost } from './utils/postScraper';
+import {
+  RedditComment,
+  parseRedditUrl,
+  scrapeRedditPost,
+} from './utils/postScraper';
 
 // Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
 
 export default function Home() {
   const [url, setUrl] = useState('');
-  const [comments, setComments] = useState([]);
+  const [comments, setComments] = useState<RedditComment[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [streamed, setStreamed] = useState('');
@@ -34,13 +38,13 @@ export default function Home() {
       setComments(comments);
 
       const result = await continueConversation(
-        comments.map((c) => c.body).join('\n===\n')
+        comments.map((c: RedditComment) => c.body).join('\n===\n')
       );
 
       for await (const content of readStreamableValue(result)) {
         setStreamed(content as string);
       }
-    } catch (err) {
+    } catch (err: any) {
       setError(err.message || 'An error occurred');
     } finally {
       setLoading(false);

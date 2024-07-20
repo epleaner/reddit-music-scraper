@@ -1,3 +1,12 @@
+export type RedditComment = {
+  id: any;
+  author: any;
+  body: any;
+  score: any;
+  createdUtc: any;
+  depth: any;
+};
+
 export function parseRedditUrl(url: string): {
   subreddit: string;
   postId: string;
@@ -20,9 +29,9 @@ export function parseRedditUrl(url: string): {
 }
 
 async function processPost(data: any): Promise<any[]> {
-  const comments = [];
+  const comments: RedditComment[] = [];
 
-  function extractComment(item) {
+  function extractComment(item: any) {
     if (item.kind === 't1') {
       // 't1' represents a comment
       const commentData = item.data;
@@ -43,7 +52,7 @@ async function processPost(data: any): Promise<any[]> {
     }
   }
 
-  function parseListing(listing) {
+  function parseListing(listing: any) {
     listing.children.forEach(extractComment);
   }
 
@@ -54,7 +63,7 @@ async function processPost(data: any): Promise<any[]> {
   return comments;
 }
 
-export async function scrapeRedditPost(post): Promise<any> {
+export async function scrapeRedditPost(post: any): Promise<any> {
   try {
     const comments = await processPost(post);
 

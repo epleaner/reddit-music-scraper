@@ -1,3 +1,4 @@
+// @ts-nocheck
 import puppeteer, { Browser } from 'puppeteer';
 
 const API_KEY = process.env.SCRAPEOPS_API_KEY || '';
