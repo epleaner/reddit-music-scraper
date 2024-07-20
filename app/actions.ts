@@ -1,0 +1,22 @@
+'use server';
+
+import { createStreamableValue } from 'ai/rsc';
+import { CoreMessage, streamText } from 'ai';
+import { openai } from '@ai-sdk/openai';
+
+export async function continueConversation(context: string) {
+  const result = await streamText({
+    model: openai('gpt-4-turbo'),
+    messages: [
+      {
+        role: 'system',
+        content:
+          'You are a helpful assistant. Parse this body of text and extract all the artist, album, and song names you are able to find. Return the results as a JSON array.',
+      },
+      { role: 'user', content: context },
+    ],
+  });
+
+  const stream = createStreamableValue(result.textStream);
+  return stream.value;
+}
