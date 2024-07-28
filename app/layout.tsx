@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import Link from 'next/link';
@@ -34,7 +34,7 @@ export default function RootLayout({
           </nav>
         </header>
         <main className='flex flex-col items-center max-sm:px-4 pb-8'>
-          {children}
+          <Suspense>{children}</Suspense>
         </main>
       </body>
     </html>
