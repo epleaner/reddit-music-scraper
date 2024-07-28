@@ -33,7 +33,7 @@ export default function RootLayout({
             </Link>
           </nav>
         </header>
-        <main className='flex flex-col items-center max-sm:px-4'>
+        <main className='flex flex-col items-center max-sm:px-4 pb-8'>
           {children}
         </main>
       </body>
