@@ -63,12 +63,9 @@ export function useRedditHandler(
   const [streaming, setStreaming] = useState(false);
   const [streamed, setStreamed] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const formData = new FormData(e.target as HTMLFormElement);
-    const submittedUrl = formData.get('url') as string;
-
+  const handleSubmit = async (submittedUrl: string) => {
     setStreaming(true);
+    setStreamed('');
 
     try {
       const fetchedComments = await fetchComments(submittedUrl);
@@ -93,10 +90,14 @@ export function RedditForm({
   onSubmit,
   loading,
   streaming,
+  url,
+  setUrl,
 }: {
   onSubmit: (e: React.FormEvent) => void;
   loading: boolean;
   streaming: boolean;
+  url: string;
+  setUrl: (url: string) => void;
 }) {
   return (
     <form onSubmit={onSubmit} className='w-full max-w-md mb-8'>
@@ -105,6 +106,8 @@ export function RedditForm({
         name='url'
         placeholder='Enter Reddit post URL'
         className='w-full px-4 py-2 rounded border border-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 text-black'
+        value={url}
+        onChange={(e) => setUrl(e.target.value)}
       />
       <button
         type='submit'
