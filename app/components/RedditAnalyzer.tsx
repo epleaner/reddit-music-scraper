@@ -52,7 +52,7 @@ export default function RedditAnalyzer({
 
   return (
     <>
-      <h1 className='text-4xl font-bold mb-4 text-center'>{title}</h1>
+      <h1 className='text-xl mb-4 text-center'>{title}</h1>
       <RedditForm
         onSubmit={(e) => {
           e.preventDefault();

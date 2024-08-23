@@ -9,10 +9,10 @@ export default function SearchHistory({
 }) {
   if (!history.length) return null;
   return (
-    <div className='w-full max-w-md mt-8'>
-      <div className='mb-4 w-full bg-white/25 h-[1px]' />
+    <div className='w-full max-w-md'>
+      <div className='my-8 w-full bg-white/25 h-[1px]' />
       <div className='flex justify-between items-center mb-2'>
-        <h3 className=''>Recent searches</h3>
+        <h3 className='text-xs'>Recent searches</h3>
         <button
           onClick={clearHistory}
           className='text-white text-xs hover:border-gray-400 transition-colors'>
