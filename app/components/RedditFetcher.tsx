@@ -5,6 +5,7 @@ import {
   parseRedditUrl,
   scrapeRedditPost,
 } from '../utils/postScraper';
+import { readStreamableValue } from 'ai/rsc';
 
 export function useRedditFetcher(initialUrl = '') {
   const [url, setUrl] = useState(initialUrl);
@@ -23,9 +24,12 @@ export function useRedditFetcher(initialUrl = '') {
       try {
         const urlToFetch = submittedUrl || url;
         const { subreddit, postId } = parseRedditUrl(urlToFetch);
-        const postJson = await fetch(
+
+        const post = await fetch(
           `https://www.reddit.com/r/${subreddit}/comments/${postId}.json`
-        ).then((res) => res.json());
+        );
+
+        const postJson = await post.json();
 
         const { comments } = await scrapeRedditPost(postJson);
         setComments(comments);
@@ -52,12 +56,47 @@ export function useRedditFetcher(initialUrl = '') {
   return { url, setUrl, comments, loading, error, fetchComments };
 }
 
+export function useRedditHandler(
+  fetchComments: (url: string) => Promise<RedditComment[]>,
+  processResult: (comments: string) => Promise<any>
+) {
+  const [streaming, setStreaming] = useState(false);
+  const [streamed, setStreamed] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const formData = new FormData(e.target as HTMLFormElement);
+    const submittedUrl = formData.get('url') as string;
+
+    setStreaming(true);
+
+    try {
+      const fetchedComments = await fetchComments(submittedUrl);
+      const result = await processResult(
+        fetchedComments.map((c: RedditComment) => c.body).join('\n===\n')
+      );
+
+      for await (let content of readStreamableValue(result)) {
+        setStreamed(content as string);
+      }
+    } catch (error) {
+      console.error('Error processing result:', error);
+    } finally {
+      setStreaming(false);
+    }
+  };
+
+  return { handleSubmit, streaming, streamed };
+}
+
 export function RedditForm({
   onSubmit,
   loading,
+  streaming,
 }: {
   onSubmit: (e: React.FormEvent) => void;
   loading: boolean;
+  streaming: boolean;
 }) {
   return (
     <form onSubmit={onSubmit} className='w-full max-w-md mb-8'>
@@ -69,9 +108,9 @@ export function RedditForm({
       />
       <button
         type='submit'
-        disabled={loading}
+        disabled={loading || streaming}
         className='mt-4 w-full border border-gray-100 text-white py-2 rounded hover:border-gray-400 transition-colors'>
-        {loading ? 'Loading...' : 'Go!'}
+        {loading || streaming ? 'Generating...' : 'Go!'}
       </button>
     </form>
   );
