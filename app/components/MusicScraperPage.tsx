@@ -30,7 +30,7 @@ export default function Home() {
         loading={loading}
         streaming={streaming}
       />
-      <Results {...{ error, streamed }} />
+      <Results {...{ error, streamed }} transformLinks={true} />
     </>
   );
 }
