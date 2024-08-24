@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import {
   RedditComment,
   parseRedditUrl,
   scrapeRedditPost,
 } from '../utils/postScraper';
 import { readStreamableValue } from 'ai/rsc';
+import { init } from 'next/dist/compiled/webpack/webpack';
 
 export function useRedditFetcher(
   processResult: (comments: string) => Promise<any>,
@@ -66,12 +68,19 @@ export function useRedditFetcher(
     [history]
   );
 
+  const router = useRouter();
+
   const handleSubmit = useCallback(
     async (submittedUrl: string) => {
       setStreaming(true);
       setStreamed('');
       setUrl(submittedUrl);
       updateHistory(submittedUrl);
+
+      // Update URL search parameter
+      router.push(`?url=${encodeURIComponent(submittedUrl)}`, {
+        scroll: false,
+      });
 
       try {
         const fetchedComments = await fetchComments(submittedUrl);
@@ -88,7 +97,7 @@ export function useRedditFetcher(
         setStreaming(false);
       }
     },
-    [fetchComments, processResult, updateHistory]
+    [fetchComments, processResult, router, updateHistory]
   );
 
   const clearHistory = () => {
@@ -96,13 +105,16 @@ export function useRedditFetcher(
     localStorage.removeItem('searchHistory');
   };
 
+  const [initialUrlSet, setInitialUrlSet] = useState(false);
   useEffect(() => {
+    if (initialUrlSet) return;
+    setInitialUrlSet(true);
     const urlParam = searchParams.get('url');
     if (urlParam) {
       setUrl(urlParam);
       handleSubmit(urlParam);
     }
-  }, [handleSubmit, searchParams]);
+  }, [handleSubmit, initialUrlSet, searchParams]);
 
   return {
     url,
