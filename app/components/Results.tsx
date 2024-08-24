@@ -14,8 +14,7 @@ export default function Results({
       // Remove list numbers, markdown characters, and (a) or (s) suffixes
       const cleanedLine = line
         .replace(/^\d+\.\s*/, '') // Remove list numbers
-        .replace(/\*\*|\*|_/g, '') // Remove markdown characters
-        .replace(/\s*\(a\)\s*|\s*\(s\)\s*/g, ''); // Remove (a) or (s) suffixes
+        .replace(/\*\*|\*|_/g, ''); // Remove markdown characters
       const query = encodeURIComponent(cleanedLine);
       const url = `https://www.youtube.com/results?search_query=${query}`;
       return (
