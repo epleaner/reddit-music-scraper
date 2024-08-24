@@ -1,4 +1,4 @@
-import SummaryPage from '../components/SummaryPage';
+import SummaryPage from '../components/pages/SummaryPage';
 
 export const maxDuration = 30;
 

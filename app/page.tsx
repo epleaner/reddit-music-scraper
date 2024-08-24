@@ -1,4 +1,4 @@
-import MusicScraperPage from './components/MusicScraperPage';
+import MusicScraperPage from './components/pages/MusicScraperPage';
 
 export const maxDuration = 30;
 

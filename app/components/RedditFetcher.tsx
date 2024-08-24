@@ -7,13 +7,26 @@ import {
 } from '../utils/postScraper';
 import { readStreamableValue } from 'ai/rsc';
 
-export function useRedditFetcher(initialUrl = '') {
+export function useRedditFetcher(
+  processResult: (comments: string) => Promise<any>,
+  initialUrl = ''
+) {
   const [url, setUrl] = useState(initialUrl);
   const [comments, setComments] = useState<RedditComment[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [streaming, setStreaming] = useState(false);
+  const [streamed, setStreamed] = useState('');
+  const [history, setHistory] = useState<string[]>([]);
 
   const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const storedHistory = localStorage.getItem('searchHistory');
+    if (storedHistory) {
+      setHistory(JSON.parse(storedHistory));
+    }
+  }, []);
 
   const fetchComments = useCallback(
     async (submittedUrl?: string) => {
@@ -44,63 +57,89 @@ export function useRedditFetcher(initialUrl = '') {
     [url]
   );
 
+  const updateHistory = useCallback(
+    (newUrl: string) => {
+      const updatedHistory = Array.from(new Set([newUrl, ...history]));
+      setHistory(updatedHistory);
+      localStorage.setItem('searchHistory', JSON.stringify(updatedHistory));
+    },
+    [history]
+  );
+
+  const handleSubmit = useCallback(
+    async (submittedUrl: string) => {
+      setStreaming(true);
+      setStreamed('');
+      setUrl(submittedUrl);
+      updateHistory(submittedUrl);
+
+      try {
+        const fetchedComments = await fetchComments(submittedUrl);
+        const result = await processResult(
+          fetchedComments.map((c: RedditComment) => c.body).join('\n===\n')
+        );
+
+        for await (let content of readStreamableValue(result)) {
+          setStreamed(content as string);
+        }
+      } catch (error) {
+        console.error('Error processing result:', error);
+      } finally {
+        setStreaming(false);
+      }
+    },
+    [fetchComments, processResult, updateHistory]
+  );
+
+  const clearHistory = () => {
+    setHistory([]);
+    localStorage.removeItem('searchHistory');
+  };
+
   useEffect(() => {
     const urlParam = searchParams.get('url');
     if (urlParam) {
       setUrl(urlParam);
-      fetchComments(urlParam);
-      console.log('URL param found');
+      handleSubmit(urlParam);
     }
-  }, [fetchComments, searchParams]);
+  }, [handleSubmit, searchParams]);
 
-  return { url, setUrl, comments, loading, error, fetchComments };
-}
-
-export function useRedditHandler(
-  fetchComments: (url: string) => Promise<RedditComment[]>,
-  processResult: (comments: string) => Promise<any>
-) {
-  const [streaming, setStreaming] = useState(false);
-  const [streamed, setStreamed] = useState('');
-
-  const handleSubmit = async (submittedUrl: string) => {
-    setStreaming(true);
-    setStreamed('');
-
-    try {
-      const fetchedComments = await fetchComments(submittedUrl);
-      const result = await processResult(
-        fetchedComments.map((c: RedditComment) => c.body).join('\n===\n')
-      );
-
-      for await (let content of readStreamableValue(result)) {
-        setStreamed(content as string);
-      }
-    } catch (error) {
-      console.error('Error processing result:', error);
-    } finally {
-      setStreaming(false);
-    }
+  return {
+    url,
+    setUrl,
+    comments,
+    loading,
+    error,
+    streaming,
+    streamed,
+    history,
+    handleSubmit,
+    clearHistory,
   };
-
-  return { handleSubmit, streaming, streamed };
 }
 
 export function RedditForm({
-  onSubmit,
+  handleSubmit,
   loading,
   streaming,
   url,
   setUrl,
 }: {
-  onSubmit: (e: React.FormEvent) => void;
+  handleSubmit: (submittedUrl: string) => Promise<void>;
   loading: boolean;
   streaming: boolean;
   url: string;
   setUrl: (url: string) => void;
 }) {
   return (
-    <form onSubmit={onSubmit} className='w-full max-w-md mb-8'>
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target as HTMLFormElement);
+        const submittedUrl = formData.get('url') as string;
+        handleSubmit(submittedUrl);
+      }}
+      className='w-full max-w-md mb-8'>
       <input
         type='text'
         name='url'

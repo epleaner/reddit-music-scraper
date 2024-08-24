@@ -1,7 +1,7 @@
 'use client';
 
-import { extractMusic } from '../actions/music';
-import RedditAnalyzer from './RedditAnalyzer';
+import { extractMusic } from '../../actions/music';
+import RedditAnalyzer from '../RedditAnalyzer';
 
 export default function MusicScraperPage() {
   return (
