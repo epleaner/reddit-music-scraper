@@ -6,6 +6,7 @@ import { getServerSession } from 'next-auth';
 import AuthSessionProvider from './components/spotify/AuthSessionProvider';
 import authOptions from './api/auth/[...nextauth]/authOptions';
 import SpotifyAuth from './components/SpotifyAuth';
+import { Toaster } from '@/components/ui/toaster';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -39,6 +40,7 @@ export default async function RootLayout({
           <main className='flex flex-col items-center max-sm:px-4 pb-8'>
             <Suspense>{children}</Suspense>
           </main>
+          <Toaster />
         </body>
       </AuthSessionProvider>
     </html>
