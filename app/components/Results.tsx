@@ -19,7 +19,7 @@ export default function Results({
       return (
         <div key={index}>
           <a href={url} target='_blank' rel='noopener noreferrer'>
-            <Markdown className='border-b border-transparent hover:border-white/75 transition-colors inline-block'>
+            <Markdown className='border-b border-transparent hover:borderbg-stone-300/75 transition-colors inline-block'>
               {line}
             </Markdown>
           </a>

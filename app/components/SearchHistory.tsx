@@ -15,7 +15,7 @@ export default function SearchHistory({
   if (!history.length) return null;
   return (
     <>
-      <div className='mt-8 w-full max-w-md bg-white/25 h-[1px]' />
+      <div className='mt-8 w-full max-w-md bg-stone-300/25 h-[1px]' />
       <Accordion
         type='single'
         collapsible

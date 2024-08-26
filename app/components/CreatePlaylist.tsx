@@ -101,7 +101,7 @@ export default function CreatePlaylistButton({
     <div className='mt-8'>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <button>Create playlist</button>
+          <button className='btn-primary'>Create playlist</button>
         </PopoverTrigger>
         <PopoverContent className='w-80' side='top' align='center'>
           <div className='flex flex-col gap-3 w-full'>
@@ -115,10 +115,12 @@ export default function CreatePlaylistButton({
               onKeyDown={(e) => {
                 if (e.key === 'Enter') createPlaylist();
               }}
-              className='bg-transparent border-b pb-1 text-sm'
+              className='input'
             />
             <div className='flex justify-center items-center'>
-              <button onClick={createPlaylist}>Create</button>
+              <button className='btn-secondary' onClick={createPlaylist}>
+                Create
+              </button>
             </div>
           </div>
         </PopoverContent>

@@ -4,11 +4,11 @@
 
 @layer base {
   :root {
-    --background: 20 14.3% 4.1%;
+    --background: 30 6.25% 25.1%;
     --foreground: 60 9.1% 97.8%;
-    --card: 20 14.3% 4.1%;
+    --card: 30 6.25% 25.1%;
     --card-foreground: 60 9.1% 97.8%;
-    --popover: 20 14.3% 4.1%;
+    --popover: 30 6.25% 25.1%;
     --popover-foreground: 60 9.1% 97.8%;
     --primary: 60 9.1% 97.8%;
     --primary-foreground: 24 9.8% 10%;
@@ -36,12 +36,30 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-stone-700 text-stone-300;
   }
 
   @layer utilities {
     .text-balance {
       text-wrap: balance;
     }
+  }
+}
+
+@layer components {
+  .input {
+    @apply px-2 py-1 grow rounded border border-stone-100 hover:border-stone-400  focus:outline-none focus:ring focus:ring-stone-400 text-stone-300 bg-transparent placeholder:text-stone-300/50 transition-colors;
+  }
+
+  .btn {
+    @apply disabled:cursor-not-allowed disabled:bg-stone-300/10 px-2 py-1 h-full border border-stone-700 rounded hover:border-stone-300 transition-colors;
+  }
+
+  .btn-primary {
+    @apply btn bg-stone-300 text-stone-700;
+  }
+
+  .btn-secondary {
+    @apply btn bg-transparent text-stone-300;
   }
 }

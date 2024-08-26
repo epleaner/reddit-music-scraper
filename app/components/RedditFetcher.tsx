@@ -178,16 +178,16 @@ export function RedditForm({
       <input
         type='text'
         name='url'
-        placeholder='Enter Reddit post URL'
-        className='px-2 py-1 grow rounded border border-gray-100 hover:border-gray-400  focus:outline-none focus:ring focus:ring-gray-400 text-white bg-transparent placeholder:text-white/50 transition-colors'
+        placeholder='enter reddit post url...'
+        className='input'
         value={url}
         onChange={(e) => setUrl(e.target.value)}
       />
       <button
         type='submit'
         disabled={loading || streaming}
-        className='disabled:cursor-not-allowed disabled:bg-white/10 px-2 py-1 h-full border border-gray-100 text-white rounded hover:border-gray-400 transition-colors'>
-        {loading || streaming ? 'Generating...' : 'Go!'}
+        className='btn-primary'>
+        {loading || streaming ? 'generating...' : 'go!'}
       </button>
     </form>
   );
