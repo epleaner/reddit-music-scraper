@@ -54,7 +54,11 @@ export default function RedditAnalyzer({
       <h1 className='text-xl mb-4 text-center'>{title}</h1>
       <RedditForm {...{ handleSubmit, loading, streaming, url, setUrl }} />
       <Results {...{ error, streamed, transformLinks, onStreamEnd }} />
-      {musicScraper && <CreatePlaylistButton {...{ tracks }} />}
+      {musicScraper && tracks.length ? (
+        <CreatePlaylistButton {...{ tracks }} />
+      ) : (
+        <></>
+      )}
       <SearchHistory {...{ history, clearHistory }} onSearch={handleSubmit} />
     </>
   );

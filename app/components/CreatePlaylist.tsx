@@ -27,7 +27,7 @@ export default function CreatePlaylistButton({
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
 
-  const playlistMaker = useCallback(async () => {
+  const createPlaylist = useCallback(async () => {
     setOpen(false);
     toast({
       title: 'Creating playlist...',
@@ -35,7 +35,7 @@ export default function CreatePlaylistButton({
     });
 
     try {
-      console.log('Creaiting playlist with tracks:', tracks);
+      console.log('Creaiting playlist with entries:', tracks);
       const uris = await Promise.all(
         tracks.map(async (track) => {
           const query = [track.artist, track.album, track.song]
@@ -58,16 +58,20 @@ export default function CreatePlaylistButton({
         })
       );
 
-      console.log(uris);
-      const validUris = uris.flat(2).filter((uri): uri is string => !!uri);
+      let validUris = uris.flat(2).filter((uri): uri is string => !!uri);
 
+      console.log('Playlist uris:', validUris);
       const user = await sdk.currentUser.profile();
       const playlist = await sdk.playlists.createPlaylist(user.id, {
         name: playlistName,
         public: false,
       });
 
-      await sdk.playlists.addItemsToPlaylist(playlist.id, validUris);
+      const batchSize = 100;
+      for (let i = 0; i < validUris.length; i += batchSize) {
+        const batch = validUris.slice(i, i + batchSize);
+        await sdk.playlists.addItemsToPlaylist(playlist.id, batch);
+      }
 
       console.log('Playlist created:', playlist);
       const playlistUrl = playlist.external_urls.spotify;
@@ -108,10 +112,13 @@ export default function CreatePlaylistButton({
               id='playlistName'
               value={playlistName}
               onChange={(e) => setPlaylistName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') createPlaylist();
+              }}
               className='bg-transparent border-b pb-1 text-sm'
             />
             <div className='flex justify-center items-center'>
-              <button onClick={playlistMaker}>Create</button>
+              <button onClick={createPlaylist}>Create</button>
             </div>
           </div>
         </PopoverContent>
