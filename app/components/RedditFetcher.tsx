@@ -103,8 +103,10 @@ export function useRedditFetcher({
         console.error('Error processing result:', error);
       } finally {
         setStreaming(false);
-        console.log('onStreamEnd:', onStreamEnd, streamed);
-        onStreamEnd?.(streamed);
+        setStreamed((p) => {
+          onStreamEnd?.(p);
+          return p;
+        });
       }
     },
     [
@@ -113,7 +115,6 @@ export function useRedditFetcher({
       onStreamEnd,
       processResult,
       router,
-      streamed,
       streaming,
       updateHistory,
     ]
@@ -126,14 +127,17 @@ export function useRedditFetcher({
 
   const [initialUrlSet, setInitialUrlSet] = useState(false);
   useEffect(() => {
-    if (initialUrlSet) return;
-    setInitialUrlSet(true);
-    const urlParam = searchParams.get('url');
-    if (urlParam) {
-      setUrl(urlParam);
-      handleSubmit(urlParam);
+    console.log('use effect:', { initialUrlSet, loading, streaming });
+    if (!initialUrlSet && !loading && !streaming) {
+      console.log('Searching!');
+      setInitialUrlSet(true);
+      const urlParam = searchParams.get('url');
+      if (urlParam) {
+        setUrl(urlParam);
+        handleSubmit(urlParam);
+      }
     }
-  }, [handleSubmit, initialUrlSet, searchParams]);
+  }, [handleSubmit, initialUrlSet, loading, searchParams, streaming]);
 
   return {
     url,
