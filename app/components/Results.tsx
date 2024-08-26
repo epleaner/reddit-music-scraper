@@ -1,4 +1,5 @@
 import Markdown from 'react-markdown';
+import cleanEntry from '../utils/musicEntryCleaner';
 
 export default function Results({
   error,
@@ -12,9 +13,7 @@ export default function Results({
   const transformToLinks = (text: string) => {
     return text.split('\n').map((line, index) => {
       // Remove list numbers, markdown characters, and (a) or (s) suffixes
-      const cleanedLine = line
-        .replace(/^\d+\.\s*/, '') // Remove list numbers
-        .replace(/\*\*|\*|_/g, ''); // Remove markdown characters
+      const cleanedLine = cleanEntry(line);
       const query = encodeURIComponent(cleanedLine);
       const url = `https://www.youtube.com/results?search_query=${query}`;
       return (

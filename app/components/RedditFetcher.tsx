@@ -7,12 +7,18 @@ import {
   scrapeRedditPost,
 } from '../utils/postScraper';
 import { readStreamableValue } from 'ai/rsc';
-import { init } from 'next/dist/compiled/webpack/webpack';
 
-export function useRedditFetcher(
-  processResult: (comments: string) => Promise<any>,
-  initialUrl = ''
-) {
+interface RedditFetcherProps {
+  processResult: (comments: string) => Promise<any>;
+  onStreamEnd?: (context: string) => void;
+  initialUrl?: string;
+}
+
+export function useRedditFetcher({
+  processResult,
+  onStreamEnd,
+  initialUrl = '',
+}: RedditFetcherProps) {
   const [url, setUrl] = useState(initialUrl);
   const [comments, setComments] = useState<RedditComment[]>([]);
   const [loading, setLoading] = useState(false);
@@ -72,6 +78,8 @@ export function useRedditFetcher(
 
   const handleSubmit = useCallback(
     async (submittedUrl: string) => {
+      if (streaming || loading) return;
+
       setStreaming(true);
       setStreamed('');
       setUrl(submittedUrl);
@@ -95,9 +103,20 @@ export function useRedditFetcher(
         console.error('Error processing result:', error);
       } finally {
         setStreaming(false);
+        console.log('onStreamEnd:', onStreamEnd, streamed);
+        onStreamEnd?.(streamed);
       }
     },
-    [fetchComments, processResult, router, updateHistory]
+    [
+      fetchComments,
+      loading,
+      onStreamEnd,
+      processResult,
+      router,
+      streamed,
+      streaming,
+      updateHistory,
+    ]
   );
 
   const clearHistory = () => {
