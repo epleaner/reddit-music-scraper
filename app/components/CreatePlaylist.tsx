@@ -28,7 +28,7 @@ export default function CreatePlaylistButton({
   const { toast } = useToast();
 
   const playlistMaker = useCallback(async () => {
-    setOpen(false); // Close the popover
+    setOpen(false);
     toast({
       title: 'Creating playlist...',
       description: 'Please wait while we create your playlist.',
@@ -94,26 +94,28 @@ export default function CreatePlaylistButton({
   }, [tracks, playlistName, toast]);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button>Create playlist</button>
-      </PopoverTrigger>
-      <PopoverContent className='w-80' side='top' align='center'>
-        <div className='flex flex-col gap-3 w-full'>
-          <p className='text-sm text-muted-foreground'>
-            Enter a name for your new playlist.
-          </p>
-          <input
-            id='playlistName'
-            value={playlistName}
-            onChange={(e) => setPlaylistName(e.target.value)}
-            className='bg-transparent border-b pb-1 text-sm'
-          />
-          <div className='flex justify-center items-center'>
-            <button onClick={playlistMaker}>Create</button>
+    <div className='mt-8'>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <button>Create playlist</button>
+        </PopoverTrigger>
+        <PopoverContent className='w-80' side='top' align='center'>
+          <div className='flex flex-col gap-3 w-full'>
+            <p className='text-sm text-muted-foreground'>
+              Enter a name for your new playlist.
+            </p>
+            <input
+              id='playlistName'
+              value={playlistName}
+              onChange={(e) => setPlaylistName(e.target.value)}
+              className='bg-transparent border-b pb-1 text-sm'
+            />
+            <div className='flex justify-center items-center'>
+              <button onClick={playlistMaker}>Create</button>
+            </div>
           </div>
-        </div>
-      </PopoverContent>
-    </Popover>
+        </PopoverContent>
+      </Popover>
+    </div>
   );
 }
