@@ -48,7 +48,7 @@
 
 @layer components {
   .input {
-    @apply px-2 py-1 grow rounded border border-stone-100 hover:border-stone-400  focus:outline-none focus:ring focus:ring-stone-400 text-stone-300 bg-transparent placeholder:text-stone-300/50 transition-colors;
+    @apply px-2 py-1 grow rounded border border-stone-400 hover:border-stone-100  focus:outline-none focus:ring focus:ring-stone-400 text-stone-300 bg-transparent placeholder:text-stone-300/50 transition-colors;
   }
 
   .btn {
@@ -60,6 +60,6 @@
   }
 
   .btn-secondary {
-    @apply btn bg-transparent text-stone-300;
+    @apply btn bg-transparent text-stone-300 disabled:bg-transparent disabled:hover:border-stone-300/10 disabled:text-stone-300/50;
   }
 }

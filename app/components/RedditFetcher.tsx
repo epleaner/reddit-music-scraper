@@ -127,9 +127,7 @@ export function useRedditFetcher({
 
   const [initialUrlSet, setInitialUrlSet] = useState(false);
   useEffect(() => {
-    console.log('use effect:', { initialUrlSet, loading, streaming });
     if (!initialUrlSet && !loading && !streaming) {
-      console.log('Searching!');
       setInitialUrlSet(true);
       const urlParam = searchParams.get('url');
       if (urlParam) {
@@ -178,16 +176,16 @@ export function RedditForm({
       <input
         type='text'
         name='url'
-        placeholder='enter reddit post url...'
+        placeholder='Enter Reddit post URL...'
         className='input'
         value={url}
         onChange={(e) => setUrl(e.target.value)}
       />
       <button
         type='submit'
-        disabled={loading || streaming}
-        className='btn-primary'>
-        {loading || streaming ? 'generating...' : 'go!'}
+        disabled={loading || streaming || !url}
+        className='btn-secondary'>
+        {loading || streaming ? 'generating...' : 'Go!'}
       </button>
     </form>
   );
