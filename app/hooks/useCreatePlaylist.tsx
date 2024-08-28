@@ -3,7 +3,12 @@ import { useToast } from '@/components/ui/use-toast';
 import sdk from '@/app/lib/spotify-sdk/ClientInstance';
 import { ToastAction } from '@/components/ui/toast';
 import { Track } from '../types';
-import { Page, SearchResults, SimplifiedTrack } from '@spotify/web-api-ts-sdk';
+import {
+  Album,
+  Page,
+  SearchResults,
+  SimplifiedTrack,
+} from '@spotify/web-api-ts-sdk';
 
 export const useCreatePlaylist = () => {
   const [isCreating, setIsCreating] = useState(false);
@@ -20,7 +25,10 @@ export const useCreatePlaylist = () => {
         try {
           return await fn();
         } catch (error: any) {
-          console.log('API request error', error.message);
+          console.error(
+            `API request error (attempt ${retries + 1}/${maxRetries}):`,
+            error.message
+          );
           if (error.message.includes('rate limit')) {
             const delay = error.headers?.get('Retry-After')
               ? parseInt(error.headers?.get('Retry-After')) * 1000
@@ -33,6 +41,7 @@ export const useCreatePlaylist = () => {
           }
         }
       }
+      console.error(`Max retries (${maxRetries}) reached. Giving up.`);
       throw new Error('Max retries reached');
     },
     []
@@ -40,47 +49,91 @@ export const useCreatePlaylist = () => {
 
   const batchSearchTracks = useCallback(
     async (tracks: Track[]): Promise<string[]> => {
-      const batchSize = 10; // Reduced batch size for more frequent pauses
-      const searchTrack = async (track: Track): Promise<string[]> => {
+      console.log(`Starting batch search for ${tracks.length} tracks`);
+      const searchBatchSize = 20; // Adjust as needed for initial search
+      const albumBatchSize = 20; // Maximum allowed for the albums endpoint
+
+      const searchTrack = async (track: Track): Promise<string | null> => {
         const query = [track.artist, track.album, track.song]
           .filter(Boolean)
           .join(' ');
+        console.log(`Searching for: ${query}`);
         if (track.song) {
           const searchResult = (await retryWithBackoff(() =>
             sdk.search(query, ['track'])
           )) as SearchResults<readonly ['track']>;
-          console.log('Search result (tracks):', searchResult);
-          return searchResult.tracks.items.map((item) => item.uri);
+          const uri = searchResult.tracks.items[0]?.uri || null;
+          console.log(
+            `Track search result for "${query}": ${uri || 'Not found'}`
+          );
+          return uri;
         } else {
           const searchResult = (await retryWithBackoff(() =>
             sdk.search(query, ['album'])
           )) as SearchResults<readonly ['album']>;
-          console.log('Search result (albums):', searchResult);
-          if (searchResult.albums.items.length > 0) {
-            const album = (await retryWithBackoff(() =>
-              sdk.albums.tracks(searchResult.albums.items[0].id)
-            )) as Page<SimplifiedTrack>;
-            console.log('Album tracks:', album);
-            return album.items.map((item) => item.uri);
-          }
-          return [];
+          const uri = searchResult.albums.items[0]?.uri || null;
+          console.log(
+            `Album search result for "${query}": ${uri || 'Not found'}`
+          );
+          return uri;
         }
       };
 
+      const fetchAlbumTracks = async (
+        albumUris: string[]
+      ): Promise<string[]> => {
+        console.log(`Fetching tracks for ${albumUris.length} albums`);
+        let ids = albumUris.map((uri) => uri.split(':').pop() as string);
+        const albums = (await retryWithBackoff(() =>
+          sdk.albums.get(ids)
+        )) as Album[];
+        const tracks = albums.flatMap(
+          (album) => album.tracks?.items.map((track) => track.uri) || []
+        );
+        console.log(
+          `Found ${tracks.length} tracks from ${albums.length} albums`
+        );
+        return tracks;
+      };
+
       const results: string[] = [];
-      for (let i = 0; i < tracks.length; i += batchSize) {
-        const batch = tracks.slice(i, i + batchSize);
-        const batchResults = await Promise.all(batch.map(searchTrack));
-        results.push(
-          ...batchResults.flat().filter((uri): uri is string => !!uri)
+      for (let i = 0; i < tracks.length; i += searchBatchSize) {
+        console.log(
+          `Processing batch ${i / searchBatchSize + 1} of ${Math.ceil(
+            tracks.length / searchBatchSize
+          )}`
+        );
+        const batch = tracks.slice(i, i + searchBatchSize);
+        const batchUris = await Promise.all(batch.map(searchTrack));
+        const validUris = batchUris.filter((uri): uri is string => !!uri);
+
+        const trackUris = validUris.filter((uri) =>
+          uri.startsWith('spotify:track:')
+        );
+        const albumUris = validUris.filter((uri) =>
+          uri.startsWith('spotify:album:')
         );
 
-        // Add a small delay between batches to help with rate limiting
-        if (i + batchSize < tracks.length) {
+        console.log(
+          `Batch results: ${trackUris.length} tracks, ${albumUris.length} albums`
+        );
+        results.push(...trackUris);
+
+        // Batch album fetching
+        for (let j = 0; j < albumUris.length; j += albumBatchSize) {
+          const albumBatch = albumUris.slice(j, j + albumBatchSize);
+          const albumTracks = await fetchAlbumTracks(albumBatch);
+          results.push(...albumTracks);
+        }
+
+        // Add a small delay between search batches to help with rate limiting
+        if (i + searchBatchSize < tracks.length) {
+          console.log('Adding delay between batches');
           await new Promise((resolve) => setTimeout(resolve, 1000));
         }
       }
 
+      console.log(`Batch search completed. Found ${results.length} tracks`);
       return results;
     },
     [retryWithBackoff]
@@ -88,13 +141,20 @@ export const useCreatePlaylist = () => {
 
   const addTracksToPlaylist = useCallback(
     async (playlistId: string, uris: string[]) => {
+      console.log(`Adding ${uris.length} tracks to playlist ${playlistId}`);
       const batchSize = 100;
       for (let i = 0; i < uris.length; i += batchSize) {
         const batch = uris.slice(i, i + batchSize);
+        console.log(
+          `Adding batch ${i / batchSize + 1} of ${Math.ceil(
+            uris.length / batchSize
+          )} (${batch.length} tracks)`
+        );
         await retryWithBackoff(() =>
           sdk.playlists.addItemsToPlaylist(playlistId, batch)
         );
       }
+      console.log(`Finished adding all tracks to playlist ${playlistId}`);
     },
     [retryWithBackoff]
   );
@@ -102,34 +162,48 @@ export const useCreatePlaylist = () => {
   const createPlaylist = useCallback(
     async (tracks: Track[], playlistName: string) => {
       setIsCreating(true);
+      console.log(
+        `Starting playlist creation: "${playlistName}" with ${tracks.length} tracks`
+      );
       toast({
         title: 'Creating playlist...',
         description: 'Please wait while we create your playlist.',
       });
 
       try {
-        console.log('Creating playlist with entries:', tracks);
+        console.log('Initiating batch search for tracks');
         const uris = await batchSearchTracks(tracks);
 
         let validUris = uris.flat(2).filter((uri): uri is string => !!uri);
+        console.log(
+          `Found ${validUris.length} valid track URIs out of ${tracks.length} original tracks`
+        );
 
-        console.log('Playlist uris:', validUris);
+        console.log('Fetching current user profile');
         const user = await retryWithBackoff(() => sdk.currentUser.profile());
+        console.log(`User profile fetched: ${user.id}`);
+
+        console.log(`Creating playlist "${playlistName}" for user ${user.id}`);
         const playlist = await retryWithBackoff(() =>
           sdk.playlists.createPlaylist(user.id, {
             name: playlistName,
             public: false,
           })
         );
+        console.log(`Playlist created with ID: ${playlist.id}`);
 
+        console.log(
+          `Adding ${validUris.length} tracks to playlist ${playlist.id}`
+        );
         await addTracksToPlaylist(playlist.id, validUris);
+        console.log('All tracks added to playlist');
 
-        console.log('Playlist created:', playlist);
         const playlistUrl = playlist.external_urls.spotify;
+        console.log(`Playlist URL: ${playlistUrl}`);
 
         toast({
           title: 'Playlist created!',
-          description: `Your playlist "${playlistName}" has been created successfully.`,
+          description: `Your playlist "${playlistName}" has been created successfully with ${validUris.length} tracks.`,
           action: (
             <ToastAction altText='View playlist' asChild>
               <a href={playlistUrl} target='_blank' rel='noopener noreferrer'>
@@ -146,6 +220,7 @@ export const useCreatePlaylist = () => {
           variant: 'destructive',
         });
       } finally {
+        console.log('Playlist creation process completed');
         setIsCreating(false);
       }
     },
