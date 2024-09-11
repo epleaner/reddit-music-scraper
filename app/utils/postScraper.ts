@@ -8,9 +8,9 @@ export type RedditComment = {
 };
 
 export function parseRedditUrl(url: string): {
-  subreddit: string;
-  postId: string;
-  jsonUrl: string;
+  subreddit?: string;
+  postId?: string;
+  jsonUrl?: string;
 } {
   // Regex pattern to match Reddit post URLs
   const pattern =
@@ -18,9 +18,7 @@ export function parseRedditUrl(url: string): {
 
   const match = url.match(pattern);
 
-  if (!match) {
-    throw new Error('Invalid Reddit URL');
-  }
+  if (!match) return {};
 
   const [, subreddit, postId] = match;
   const jsonUrl = `https://www.reddit.com/r/${subreddit}/comments/${postId}.json`;

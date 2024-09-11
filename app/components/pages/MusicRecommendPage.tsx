@@ -3,12 +3,11 @@
 import { extractMusic } from '../../actions/music';
 import RedditAnalyzer from '../RedditAnalyzer';
 
-export default function MusicScraperPage() {
+export default function MusicRecommendPage() {
   return (
     <>
       <RedditAnalyzer
-        title='Reddit music recommender'
-        searchPlaceholder='Search or enter a Reddit post URL'
+        title='Music recommender'
         processResult={extractMusic}
         transformLinks={true}
         musicScraper

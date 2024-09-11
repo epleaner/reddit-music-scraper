@@ -17,6 +17,7 @@ interface RedditAnalyzerProps {
   transformLinks?: boolean;
   onStreamEnd?: (context: string) => void;
   musicScraper?: boolean;
+  searchPlaceholder?: string;
 }
 
 export default function RedditAnalyzer({
@@ -24,6 +25,7 @@ export default function RedditAnalyzer({
   processResult,
   transformLinks = false,
   musicScraper = false,
+  searchPlaceholder = 'Enter a Reddit post URL',
 }: RedditAnalyzerProps) {
   const [tracks, setTracks] = useState<Track[]>([]);
 
@@ -35,8 +37,8 @@ export default function RedditAnalyzer({
   const onStreamEnd = musicScraper ? handleMusicExtraction : undefined;
 
   const {
-    url,
-    setUrl,
+    query,
+    setQuery,
     loading,
     error,
     streaming,
@@ -52,13 +54,23 @@ export default function RedditAnalyzer({
   return (
     <>
       <h1 className='text-xl mb-4 text-center'>{title}</h1>
-      <RedditForm {...{ handleSubmit, loading, streaming, url, setUrl }} />
+      <RedditForm
+        {...{
+          handleSubmit,
+          loading,
+          streaming,
+          query,
+          setQuery,
+          searchPlaceholder,
+        }}
+      />
       <Results {...{ error, streamed, transformLinks, onStreamEnd }} />
       {musicScraper && tracks.length ? (
         <CreatePlaylistButton {...{ tracks }} />
       ) : (
         <></>
       )}
+
       <SearchHistory {...{ history, clearHistory }} onSearch={handleSubmit} />
     </>
   );

@@ -30,7 +30,7 @@ export default async function RootLayout({
             <nav className='flex gap-4 w-full max-sm:justify-center justify-end items-center'>
               <SpotifyAuth />
               <Link className='text-xs transition-colors' href='/'>
-                Music scraper
+                Music recommender
               </Link>
               <Link className='text-xs transition-colors' href='/summary'>
                 Summarizer

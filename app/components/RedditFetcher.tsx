@@ -7,19 +7,34 @@ import {
   scrapeRedditPost,
 } from '../utils/postScraper';
 import { readStreamableValue } from 'ai/rsc';
+import { getRedditUrls } from '../actions/webSearch';
 
 interface RedditFetcherProps {
   processResult: (comments: string) => Promise<any>;
   onStreamEnd?: (context: string) => void;
-  initialUrl?: string;
+  initialQuery?: string;
+}
+
+async function fetchRedditComments(query: string): Promise<RedditComment[]> {
+  const { subreddit, postId } = parseRedditUrl(query);
+
+  const post = await fetch(
+    `https://www.reddit.com/r/${subreddit}/comments/${postId}.json`
+  );
+
+  const postJson = await post.json();
+
+  const { comments } = await scrapeRedditPost(postJson);
+
+  return comments;
 }
 
 export function useRedditFetcher({
   processResult,
   onStreamEnd,
-  initialUrl = '',
+  initialQuery = '',
 }: RedditFetcherProps) {
-  const [url, setUrl] = useState(initialUrl);
+  const [query, setQuery] = useState(initialQuery);
   const [comments, setComments] = useState<RedditComment[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -36,25 +51,45 @@ export function useRedditFetcher({
     }
   }, []);
 
-  const fetchComments = useCallback(
-    async (submittedUrl?: string) => {
+  const getCommentContext = useCallback(
+    async ({ query: submittedQuery }: { query?: string }) => {
       setLoading(true);
       setError('');
       setComments([]);
 
       try {
-        const urlToFetch = submittedUrl || url;
-        const { subreddit, postId } = parseRedditUrl(urlToFetch);
+        const queryToFetch = submittedQuery || query;
 
-        const post = await fetch(
-          `https://www.reddit.com/r/${subreddit}/comments/${postId}.json`
-        );
+        const { jsonUrl } = parseRedditUrl(queryToFetch);
 
-        const postJson = await post.json();
+        let fetchedComments: RedditComment[] = [];
+        if (!jsonUrl) {
+          const urls = await getRedditUrls(queryToFetch);
+          console.log(urls);
+          fetchedComments = (
+            await Promise.all(
+              urls.map(async (url) => {
+                try {
+                  return await fetchRedditComments(url);
+                } catch (error) {
+                  console.error(`Error fetching comments from ${url}:`, error);
+                  return [];
+                }
+              })
+            )
+          ).flat();
+          console.log('Fetched comments:', fetchedComments);
+        } else {
+          fetchedComments = await fetchRedditComments(queryToFetch);
+        }
 
-        const { comments } = await scrapeRedditPost(postJson);
-        setComments(comments);
-        return comments;
+        setComments(fetchedComments);
+
+        const context = fetchedComments
+          .map((c: RedditComment) => c.body)
+          .join('\n===\n');
+
+        return context;
       } catch (err: any) {
         setError(err.message || 'An error occurred');
         throw err;
@@ -62,12 +97,12 @@ export function useRedditFetcher({
         setLoading(false);
       }
     },
-    [url]
+    [query]
   );
 
   const updateHistory = useCallback(
-    (newUrl: string) => {
-      const updatedHistory = Array.from(new Set([newUrl, ...history]));
+    (newQuery: string) => {
+      const updatedHistory = Array.from(new Set([newQuery, ...history]));
       setHistory(updatedHistory);
       localStorage.setItem('searchHistory', JSON.stringify(updatedHistory));
     },
@@ -76,29 +111,35 @@ export function useRedditFetcher({
 
   const router = useRouter();
 
+  const processAndStreamResult = useCallback(
+    async (context: string) => {
+      const result = await processResult(context);
+
+      for await (let content of readStreamableValue(result)) {
+        setStreamed(content as string);
+      }
+    },
+    [processResult]
+  );
+
   const handleSubmit = useCallback(
-    async (submittedUrl: string) => {
+    async (query: string) => {
       if (streaming || loading) return;
 
       setStreaming(true);
       setStreamed('');
-      setUrl(submittedUrl);
-      updateHistory(submittedUrl);
+      setQuery(query);
+      updateHistory(query);
 
       // Update URL search parameter
-      router.push(`?url=${encodeURIComponent(submittedUrl)}`, {
+      router.push(`?query=${encodeURIComponent(query)}`, {
         scroll: false,
       });
 
       try {
-        const fetchedComments = await fetchComments(submittedUrl);
-        const result = await processResult(
-          fetchedComments.map((c: RedditComment) => c.body).join('\n===\n')
-        );
+        const context = await getCommentContext({ query });
 
-        for await (let content of readStreamableValue(result)) {
-          setStreamed(content as string);
-        }
+        await processAndStreamResult(context);
       } catch (error) {
         console.error('Error processing result:', error);
       } finally {
@@ -110,10 +151,10 @@ export function useRedditFetcher({
       }
     },
     [
-      fetchComments,
+      getCommentContext,
       loading,
       onStreamEnd,
-      processResult,
+      processAndStreamResult,
       router,
       streaming,
       updateHistory,
@@ -125,21 +166,21 @@ export function useRedditFetcher({
     localStorage.removeItem('searchHistory');
   };
 
-  const [initialUrlSet, setInitialUrlSet] = useState(false);
+  const [initialQuerySet, setInitialQuerySet] = useState(false);
   useEffect(() => {
-    if (!initialUrlSet && !loading && !streaming) {
-      setInitialUrlSet(true);
-      const urlParam = searchParams.get('url');
-      if (urlParam) {
-        setUrl(urlParam);
-        handleSubmit(urlParam);
+    if (!initialQuerySet && !loading && !streaming) {
+      setInitialQuerySet(true);
+      const queryParam = searchParams.get('query');
+      if (queryParam) {
+        setQuery(queryParam);
+        handleSubmit(queryParam);
       }
     }
-  }, [handleSubmit, initialUrlSet, loading, searchParams, streaming]);
+  }, [handleSubmit, initialQuerySet, loading, searchParams, streaming]);
 
   return {
-    url,
-    setUrl,
+    query,
+    setQuery,
     comments,
     loading,
     error,
@@ -148,6 +189,7 @@ export function useRedditFetcher({
     history,
     handleSubmit,
     clearHistory,
+    processAndStreamResult,
   };
 }
 
@@ -155,35 +197,38 @@ export function RedditForm({
   handleSubmit,
   loading,
   streaming,
-  url,
-  setUrl,
+  query,
+  setQuery,
+
+  searchPlaceholder,
 }: {
-  handleSubmit: (submittedUrl: string) => Promise<void>;
+  handleSubmit: (query: string) => Promise<void>;
   loading: boolean;
   streaming: boolean;
-  url: string;
-  setUrl: (url: string) => void;
+  query: string;
+  setQuery: (query: string) => void;
+  searchPlaceholder: string;
 }) {
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault();
         const formData = new FormData(e.target as HTMLFormElement);
-        const submittedUrl = formData.get('url') as string;
-        handleSubmit(submittedUrl);
+        const query = formData.get('query') as string;
+        handleSubmit(query);
       }}
       className='w-full max-w-md mb-8 flex gap-2'>
       <input
         type='text'
-        name='url'
-        placeholder='Enter Reddit post URL...'
+        name='query'
+        placeholder={searchPlaceholder}
         className='input'
-        value={url}
-        onChange={(e) => setUrl(e.target.value)}
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
       />
       <button
         type='submit'
-        disabled={loading || streaming || !url}
+        disabled={loading || streaming || !query}
         className='btn-secondary'>
         {loading || streaming ? 'generating...' : 'Go!'}
       </button>
