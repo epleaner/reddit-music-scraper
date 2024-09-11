@@ -13,7 +13,13 @@ interface Track {
 
 interface RedditAnalyzerProps {
   title: string;
-  processResult: (comments: string) => Promise<any>;
+  processResult: ({
+    query,
+    context,
+  }: {
+    query: string;
+    context: string;
+  }) => Promise<any>;
   transformLinks?: boolean;
   onStreamEnd?: (context: string) => void;
   musicScraper?: boolean;
@@ -64,9 +70,9 @@ export default function RedditAnalyzer({
           searchPlaceholder,
         }}
       />
-      <Results {...{ error, streamed, transformLinks, onStreamEnd }} />
+      <Results {...{ error, streamed, transformLinks }} />
       {musicScraper && tracks.length ? (
-        <CreatePlaylistButton {...{ tracks }} />
+        <CreatePlaylistButton {...{ query, tracks }} />
       ) : (
         <></>
       )}

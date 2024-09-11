@@ -3,12 +3,8 @@ import { useToast } from '@/components/ui/use-toast';
 import sdk from '@/app/lib/spotify-sdk/ClientInstance';
 import { ToastAction } from '@/components/ui/toast';
 import { Track } from '../types';
-import {
-  Album,
-  Page,
-  SearchResults,
-  SimplifiedTrack,
-} from '@spotify/web-api-ts-sdk';
+import { Album, SearchResults } from '@spotify/web-api-ts-sdk';
+import { cacheSpotifyPlaylist, getCachedSpotifyPlaylist } from '../lib/redis';
 
 export const useCreatePlaylist = () => {
   const [isCreating, setIsCreating] = useState(false);
@@ -160,7 +156,15 @@ export const useCreatePlaylist = () => {
   );
 
   const createPlaylist = useCallback(
-    async (tracks: Track[], playlistName: string) => {
+    async ({
+      query,
+      tracks,
+      playlistName,
+    }: {
+      query: string;
+      tracks: Track[];
+      playlistName: string;
+    }) => {
       setIsCreating(true);
       console.log(
         `Starting playlist creation: "${playlistName}" with ${tracks.length} tracks`
@@ -171,6 +175,31 @@ export const useCreatePlaylist = () => {
       });
 
       try {
+        // Check if a playlist for this query already exists
+        const cachedPlaylistId = await getCachedSpotifyPlaylist(query);
+        if (cachedPlaylistId) {
+          console.log(`Found cached playlist: ${cachedPlaylistId}`);
+          toast({
+            title: 'Playlist found',
+            description: `There is an existing playlist for this search`,
+            action: (
+              <ToastAction
+                altText='View playlist'
+                asChild
+                className='border-none'>
+                <a
+                  href={`https://open.spotify.com/playlist/${cachedPlaylistId}`}
+                  target='_blank'
+                  rel='noopener noreferrer'>
+                  View
+                </a>
+              </ToastAction>
+            ),
+          });
+          setIsCreating(false);
+          return;
+        }
+
         console.log('Initiating batch search for tracks');
         const uris = await batchSearchTracks(tracks);
 
@@ -201,11 +230,17 @@ export const useCreatePlaylist = () => {
         const playlistUrl = playlist.external_urls.spotify;
         console.log(`Playlist URL: ${playlistUrl}`);
 
+        // Cache the created playlist
+        await cacheSpotifyPlaylist(query, playlist.id);
+
         toast({
-          title: 'Playlist created!',
-          description: `Your playlist "${playlistName}" has been created successfully with ${validUris.length} tracks.`,
+          title: 'Playlist created',
+          description: `Your playlist "${playlistName}" has been created with ${validUris.length} tracks`,
           action: (
-            <ToastAction altText='View playlist' asChild>
+            <ToastAction
+              altText='View playlist'
+              asChild
+              className='border-none'>
               <a href={playlistUrl} target='_blank' rel='noopener noreferrer'>
                 View
               </a>

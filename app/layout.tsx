@@ -7,6 +7,7 @@ import AuthSessionProvider from './components/spotify/AuthSessionProvider';
 import authOptions from './api/auth/[...nextauth]/authOptions';
 import SpotifyAuth from './components/SpotifyAuth';
 import { Toaster } from '@/components/ui/toaster';
+import { cacheLLMResponse, getCachedLLMResponse } from './lib/redis';
 
 const inter = Inter({ subsets: ['latin'] });
 

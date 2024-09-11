@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   Popover,
   PopoverContent,
@@ -10,20 +10,22 @@ import { useCreatePlaylist } from '../hooks/useCreatePlaylist';
 import { Track } from '../types';
 
 interface CreatePlaylistButtonProps {
+  query: string;
   tracks: Track[];
 }
 
 export default function CreatePlaylistButton({
+  query,
   tracks,
 }: CreatePlaylistButtonProps) {
   const [playlistName, setPlaylistName] = useState('Generated Playlist');
   const [open, setOpen] = useState(false);
   const { createPlaylist, isCreating } = useCreatePlaylist();
 
-  const handleCreatePlaylist = async () => {
+  const handleCreatePlaylist = useCallback(async () => {
     setOpen(false);
-    await createPlaylist(tracks, playlistName);
-  };
+    await createPlaylist({ query, tracks, playlistName });
+  }, [createPlaylist, playlistName, query, tracks]);
 
   return (
     <div className='mt-8'>

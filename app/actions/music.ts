@@ -1,22 +1,16 @@
 'use server';
 
-import { createStreamableValue } from 'ai/rsc';
-import { streamText } from 'ai';
-import { openai } from '@ai-sdk/openai';
+import { streamLLM } from '../lib/llm/stream';
 
-export async function extractMusic(context: string) {
-  const result = await streamText({
-    model: openai('gpt-4-turbo'),
-    messages: [
-      {
-        role: 'system',
-        content:
-          'You are a helpful assistant. Parse this body of text and extract all the artist, album, and song names you are able to find. Return the results as an enumerated list. Only return the list, no introductory or concluding text. Only include the artist, album, and song names.',
-      },
-      { role: 'user', content: context },
-    ],
-  });
+export async function extractMusic({
+  query,
+  context,
+}: {
+  query: string;
+  context: string;
+}) {
+  const systemPrompt =
+    'You are a helpful assistant. Parse this body of text and extract all the artist, album, and song names you are able to find. Return the results as an enumerated list. Only return the list, no introductory or concluding text. Only include the artist, album, and song names.';
 
-  const stream = createStreamableValue(result.textStream);
-  return stream.value;
+  return streamLLM({ query, context, systemPrompt });
 }

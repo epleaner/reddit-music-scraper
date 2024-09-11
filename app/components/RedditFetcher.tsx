@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, cache } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useRouter } from 'next/navigation';
 import {
@@ -8,9 +8,16 @@ import {
 } from '../utils/postScraper';
 import { readStreamableValue } from 'ai/rsc';
 import { getRedditUrls } from '../actions/webSearch';
+import { cacheLLMResponse } from '../lib/redis';
 
 interface RedditFetcherProps {
-  processResult: (comments: string) => Promise<any>;
+  processResult: ({
+    query,
+    context,
+  }: {
+    query: string;
+    context: string;
+  }) => Promise<any>;
   onStreamEnd?: (context: string) => void;
   initialQuery?: string;
 }
@@ -112,12 +119,16 @@ export function useRedditFetcher({
   const router = useRouter();
 
   const processAndStreamResult = useCallback(
-    async (context: string) => {
-      const result = await processResult(context);
+    async ({ query, context }: { query: string; context: string }) => {
+      let finalResult = '';
+      console.log('Processing and streaming result', query, context);
+      const result = await processResult({ query, context });
 
       for await (let content of readStreamableValue(result)) {
         setStreamed(content as string);
+        finalResult = content as string;
       }
+      return finalResult;
     },
     [processResult]
   );
@@ -136,18 +147,18 @@ export function useRedditFetcher({
         scroll: false,
       });
 
+      let finalResult = '';
       try {
         const context = await getCommentContext({ query });
 
-        await processAndStreamResult(context);
+        finalResult = await processAndStreamResult({ query, context });
       } catch (error) {
         console.error('Error processing result:', error);
       } finally {
         setStreaming(false);
-        setStreamed((p) => {
-          onStreamEnd?.(p);
-          return p;
-        });
+
+        cacheLLMResponse(query, finalResult);
+        onStreamEnd?.(finalResult);
       }
     },
     [
