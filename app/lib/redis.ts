@@ -26,10 +26,14 @@ export async function getCachedLLMResponse(
   query: string
 ): Promise<string | null> {
   console.log('Looking for cached LLM response for query:', query);
-  const res = await redis.get(`llm:${query}`);
-  console.log('Found cached LLM response:', res);
-
-  return res;
+  try {
+    const res = await redis.get(`llm:${query}`);
+    console.log('Found cached LLM response:', res);
+    return res;
+  } catch (e) {
+    console.error('Error fetching cached LLM response:', e);
+    return null;
+  }
 }
 
 // Cache Spotify playlists
